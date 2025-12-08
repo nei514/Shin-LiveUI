@@ -175,11 +175,10 @@ html, body {
 .news-top {
   position: fixed;
   top: 19px;
-  /* 左側に20pxの余白、右側は白線(408px)の位置の内側まで確保してその領域内で中央寄せ */
   left: 20px;
   right: calc(408px + 20px);
-  z-index: 120;
-  color: #ffffff;
+  z-index: 9999;     /* ★ 常に最前面に */
+  color: #fff;
   font-size: 40px;
   font-weight: 600;
   line-height: 1.1;
@@ -189,8 +188,9 @@ html, body {
   padding: 6px 10px;
   box-sizing: border-box;
   user-select: none;
-  text-align: center; /* 領域内で中央寄せ */
+  text-align: center;
 }
+
 
 
 .warning-embedded #warning-card-container {
@@ -264,14 +264,129 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
   width: 0;
   height: 0;
 }
+#map {
+  position: fixed;
+  left: 0px;
+  right: 408px;
+  top: 0;
+  bottom: 80px;
+  z-index: 30;
+  background: #1d1d1d;
+}
+/* 左端パネル（地図の上に重ねる） */
+/* 上のタイトル長方形 */
+#map-left-panel-title {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  width: 400px;
+  height: 65px; /* タイトル枠の高さ */
+  background: rgba(0, 0, 0, 0.55); /* 下より濃く */
+  color: white;
+  font-size: 35px;
+  font-weight: bold;
+  text-align: center;
+  line-height: 60px; /* テキストを中央に */
+  z-index: 2000;
+  pointer-events: none;
+  border-radius: 4px;
+}
 
+/* 下の半透明パネル */
+#map-left-panel {
+  position: absolute;
+  top: 90px;   /* タイトル（60px）＋余白30px */
+  left: 15px;
+  width: 400px;
+  bottom: 95px;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 1999;
+  pointer-events: none;
+  border-radius: 4px;
+}
+#eq-info {
+  padding: 20px;
+  color: white;
+  font-family: "Segoe UI", sans-serif;
+  pointer-events: auto;
+}
+
+/* 最大震度の小さいアイコン */
+.eq-maxscale-icon {
+  width: 38px;
+  height: 38px;
+  vertical-align: middle;
+}
+
+
+
+/* 最大震度テキスト */
+.eq-maxscale {
+  text-align: center;
+  font-size: 38px;
+  font-weight: bold;
+  color: white; /* ← 白文字 */
+}
+
+/* 時刻 */
+.eq-time {
+    text-align: center;
+font-weight: bold;
+  font-size: 30px;
+}
+
+/* 震源地 */
+.eq-hypo {
+  font-weight: bold;
+  font-size: 30px;
+}
+
+/* 下の通常テキスト */
+.eq-item {
+  font-weight: bold;
+  font-size: 30px;
+}
+.eq-tsunami-warning {
+  font-weight: bold;
+  font-size: 30px;
+}
   </style>
+    <!-- === Leaflet の CSS/JS を追加（必要最小限） === -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="./source/JMAPoints.js"></script>
+  <script src="source/SmoothWheelZoom.js"></script>
 </head>
 <body>
+<div id="map-left-panel-title">地震情報</div>
+<div id="map-left-panel">
+    <div id="eq-info">読み込み中...</div>
+</div>
+
   <div class="container">
     <img id="weatherMap" src="" alt="気象庁天気図" style="display:none;" />
     <p id="loading">天気図を読み込み中...</p>
   </div>
+  <!-- === ここに Leaflet 地図を追加（あなたの元コードに対する最小変更） === -->
+<!-- 地図全体エリア -->
+  <div id="leaflet-map"
+       style="
+         position: fixed;
+         left: 000px;
+         right: 408px;
+         top: 0;
+         bottom: 80px;
+         z-index: 30;
+         background: #1d1d1d;
+       "
+       aria-hidden="false"
+       role="region"
+       aria-label="日本地図">
+  </div>
+  <div id="map"></div>
 
   <!-- 右上に警報ウィジェットを直接埋め込み -->
   <div id="warning-widget" class="warning-embedded" aria-label="警報・注意報ウィジェット">
@@ -285,7 +400,6 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
     </div>
     <div class="clock" id="clock"></div>
   </div>
-
   <script>
 // inlined script.js
 // script.js — 統合版（WARNINGSIZE でカード数を制御、UIは生成しない）
@@ -338,7 +452,6 @@ let animationId = null;
 let warningShowIntervalId = null;
 // 更新時にすぐに切り替えず、現在の一巡が終わるまで保留するための変数
 let pendingCombinedItems = null;
-
 // 時計
 function updateClock() {
   const now = new Date();
@@ -349,6 +462,410 @@ function updateClock() {
 }
 setInterval(updateClock, 1000);
 updateClock();
+var map = L.map('map', { preferCanvas: true, smoothWheelZoom: true,scrollWheelZoom: false, smoothSensitivity: 1.5,}).setView([36.575, 137.984], 6);
+L.control.scale({ maxWidth: 150, position: 'bottomright', imperial: false }).addTo(map);
+map.zoomControl.setPosition('topright');
+
+var JMAPointsJson;
+
+//地図に表示させる上下の順番
+map.createPane("pane_map1").style.zIndex = 1; //地図（背景）
+map.createPane("pane_map2").style.zIndex = 2; //地図（市町村）
+map.createPane("pane_map3").style.zIndex = 3; //地図（細分）
+map.createPane("pane_map_filled").style.zIndex = 5; //塗りつぶし
+map.createPane("shindo10").style.zIndex = 10;
+map.createPane("shindo20").style.zIndex = 20;
+map.createPane("shindo30").style.zIndex = 30;
+map.createPane("shindo40").style.zIndex = 40;
+map.createPane("shindo45").style.zIndex = 45;
+map.createPane("shindo46").style.zIndex = 46;
+map.createPane("shindo50").style.zIndex = 50;
+map.createPane("shindo55").style.zIndex = 55;
+map.createPane("shindo60").style.zIndex = 60;
+map.createPane("shindo70").style.zIndex = 70;
+map.createPane("shingen").style.zIndex = 100; //震源
+map.createPane("tsunami_map").style.zIndex = 110; //津波
+
+// ---- あなたのスタイル ----
+var PolygonLayer_Style_nerv = {
+    "color": "#ffffff",
+    "weight": 1.5,
+    "opacity": 1,
+    "fillColor": "#3a3a3a",
+    "fillOpacity": 1
+};
+map.attributionControl.addAttribution(
+    "<a href='https://github.com/mutsuyuki/Leaflet.SmoothWheelZoom' target='_blank'>SmoothWheelZoom</a>"
+);
+map.attributionControl.addAttribution('地図データ &copy; <a href="https://www.jma.go.jp/jma/index.html" target="_blank">気象庁</a>');
+// ---- 日本の都道府県 GeoJSON
+var japan_data;
+fetch("source/saibun.geojson")
+  .then(response => response.json())
+  .then(data => {
+      japan_data = data;
+      L.geoJson(data, {
+        pane: "pane_map3",
+          style: PolygonLayer_Style_nerv
+      }).addTo(map);
+  })
+  .catch(err => console.error(err));
+//気象庁観測点データ読み込み
+fetch("source/JMAstations.json")
+  .then(res => res.json())
+  .then(data => {
+      JMAPointsJson = data;
+      fetchQuakeData();
+  });
+
+var shindo_icon;
+var shindo_layer = L.layerGroup();
+var shindo_filled_layer = L.layerGroup();
+var filled_list = {};
+
+//地震情報
+function fetchQuakeData() {
+  var url;
+  
+    url = "https://api.p2pquake.net/v2/history?codes=551&limit=1";
+    $.getJSON(url, function (data) {
+    var [time, name, shindo, magnitude, depth] = [
+        data["0"]["earthquake"]["time"],
+        data["0"]["earthquake"]["hypocenter"]["name"],
+        data["0"]["earthquake"]["maxScale"],
+        data["0"]["earthquake"]["hypocenter"]["magnitude"],
+        data["0"]["earthquake"]["hypocenter"]["depth"]
+    ]
+    console.log(time+"ごろ、"+name+"で最大震度"+shindo/10+"の地震が発生しました。マグニチュードは"+magnitude+"、深さ"+depth+"kmと推定されています。");
+
+    var shingenLatLng = new L.LatLng(data[0]["earthquake"]["hypocenter"]["latitude"], data[0]["earthquake"]["hypocenter"]["longitude"]);
+    var shingenIconImage = L.icon({
+        iconUrl: 'source/Shingen.png',
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+        popupAnchor: [0, -40]
+    });
+    if (shingenIcon && shindo_layer && shindo_filled_layer) {
+        map.removeLayer(shingenIcon);
+        map.removeLayer(shindo_layer);
+        map.removeLayer(shindo_filled_layer);
+        shingenIcon = "";
+        shindo_layer = L.layerGroup();
+        shindo_filled_layer = L.layerGroup();
+        filled_list = {};
+        shindo_icon = "";
+    }
+// 震度アイコン画像 URL を作る
+let shindoIconUrl = `source/Shindo/jqk_int${shindo}.png`;
+
+// HTML作成
+var infoHTML = `
+  <div class="eq-maxscale">
+    最大震度 <img src="${shindoIconUrl}" class="eq-maxscale-icon"></div>
+  <div class="eq-time">${formatJSTDate(time)}</div>
+  <div class="eq-hypo">震源地：${name}</div>
+  <div class="eq-item">地震の規模：M${hantei_Magnitude(magnitude)}</div>
+  <div class="eq-item">震源の深さ：${hantei_Depth(depth)}</div>
+  <div class="eq-tsunami-warning">津波の心配：${hantei_tsunamiText(data[0]["earthquake"]["domesticTsunami"])}</div>
+`;
+
+
+document.getElementById("eq-info").innerHTML = infoHTML;
+
+
+    if (data[0]["issue"]["type"] != "ScalePrompt") { //各地の震度に関する情報
+
+
+    // 新しく震源アイコンを追加
+    shingenIconMarker = L.marker(shingenLatLng, {
+        icon: shingenIconImage
+    }).addTo(map);
+        data[0]["points"].forEach(element => {
+        var result = JMAPointsJson.findIndex(st => element["addr"].includes(st.name));
+        if (result != -1) {
+            var ImgUrl = "";
+            var PointShindo = "";
+            var icon_theme = "Shindo/jqk";
+            if (element["scale"] == 10) {
+                ImgUrl = "source/"+icon_theme+"_int10.png";
+                PointShindo = "震度1";
+            } else if (element["scale"] == 20) {
+                ImgUrl = "source/"+icon_theme+"_int20.png";
+                PointShindo = "震度2";
+            } else if (element["scale"] == 30) {
+                ImgUrl = "source/"+icon_theme+"_int30.png";
+                PointShindo = "震度3";
+            } else if (element["scale"] == 40) {
+                ImgUrl = "source/"+icon_theme+"_int40.png";
+                PointShindo = "震度4";
+            } else if (element["scale"] == 45) {
+                ImgUrl = "source/"+icon_theme+"_int50.png";
+                PointShindo = "震度5弱";
+            } else if (element["scale"] == 46) {
+                ImgUrl = "source/"+icon_theme+"_int_.png";
+                PointShindo = "震度5弱以上と推定";
+            } else if (element["scale"] == 50) {
+                ImgUrl = "source/"+icon_theme+"_int55.png";
+                PointShindo = "震度5強";
+            } else if (element["scale"] == 55) {
+                ImgUrl = "source/"+icon_theme+"_int60.png";
+                PointShindo = "震度6弱";
+            } else if (element["scale"] == 60) {
+                ImgUrl = "source/"+icon_theme+"_int65.png";
+                PointShindo = "震度6強";
+            } else if (element["scale"] == 70) {
+                ImgUrl = "source/"+icon_theme+"_int70.png";
+                PointShindo = "震度7";
+            } else {
+                ImgUrl = "source/"+icon_theme+"_int_.png";
+                PointShindo = "震度不明";
+            }
+            if (element["isArea"] == false) { //観測点
+                let shindo_latlng = new L.LatLng(JMAPointsJson[result]["lat"], JMAPointsJson[result]["lon"]);
+                let shindoIcon = L.icon({
+                    iconUrl: ImgUrl,
+                    iconSize: [20, 20],
+                    popupAnchor: [0, -40]
+                });
+                let shindoIcon_big = L.icon({
+                    iconUrl: ImgUrl,
+                    iconSize: [34, 34],
+                    popupAnchor: [0, -40]
+                });
+                shindo_icon = L.marker(shindo_latlng, { 
+                 icon: shindoIcon,
+                  pane: "shindo" + element["scale"]
+                });
+
+                shindo_icon.bindPopup('<ruby>'+element["addr"] + '<rt style="font-size: 0.7em;">' + JMAPointsJson[result]["furigana"] + '</rt></ruby>　'+ PointShindo,{closeButton: false, zIndexOffset: 10000,autoPan: false,});
+                shindo_icon.on('mouseover', function (e) {
+                    this.openPopup();
+                });
+                shindo_icon.on('mouseout', function (e) {
+                    this.closePopup();
+                });
+                shindo_layer.addLayer(shindo_icon);
+                //塗りつぶしの設定をする
+                //AreaNameToCode()は下を参照。大阪府北部を520等に変換
+                //filled_listは連想配列で{520: 10, 120: 20}など、エリアコード: 震度の大きさ
+                var areaCode = AreaNameToCode(JMAPointsJson[result]["area"]["name"]);
+                //filled_listにエリアコードがなかったり、さらに大きな震度になっていたら更新
+                if ((!filled_list[areaCode]) || filled_list[areaCode] < element["scale"]) {
+                    filled_list[areaCode] = element["scale"];
+                }
+                
+            }
+            
+            //for(... in ...)もforEachと同等。keyに連想配列の名前が入る
+            for (key in filled_list){ 
+                var PointColor;
+                if (filled_list[key] == 10) {
+                  PointColor = "RGB(72, 85, 85)";
+                } else if (filled_list[key] == 20) {
+                  PointColor = "RGB(0, 75, 195)";
+                } else if (filled_list[key] == 30) {
+                  PointColor = "RGB(15, 145, 65)";
+                } else if (filled_list[key] == 40) {
+                  PointColor = "RGB(220, 189, 58)";
+                } else if (filled_list[key] == 45) {
+                  PointColor = "RGB(220, 135, 0)";
+                } else if (filled_list[key] == 46) {
+                  PointColor = "RGB(220, 135, 0)";
+                } else if (filled_list[key] == 50) {
+                  PointColor = "RGB(204, 77, 0)";
+                } else if (filled_list[key] == 55) {
+                  PointColor = "RGB(195, 0, 0)";
+                } else if (filled_list[key] == 60) {
+                  PointColor = "RGB(125, 0, 0)";
+                } else if (filled_list[key] == 70) {
+                  PointColor = "RGB(58, 0, 109)";
+                }
+                //引数"key"はエリアコード、"PointColor"は塗りつぶし色のHEX値
+                FillPolygon(key, PointColor);
+            }
+            
+        }
+        });
+    }else{
+    var icon_theme = "Shindo/jqk";
+    var latlon;
+    var latList = [];
+    var lonList = [];
+
+
+    data[0]["points"].forEach(element => {
+        var ImgUrl = "";
+        var PointShindo = "";
+        var PointColor;
+         if (element["scale"] == 10) {
+            eval('PointColor = "RGB(72, 85, 85)"');
+            ImgUrl = "source/"+icon_theme+"_int1.png";
+            PointShindo = "震度1";
+        } else if (element["scale"] == 20) {
+            eval('PointColor = "RGB(0, 75, 195)"');
+            ImgUrl = "source/"+icon_theme+"_int2.png";
+            PointShindo = "震度2";
+        } else if (element["scale"] == 30) {
+            eval('PointColor = "RGB(15, 145, 65)"');
+            ImgUrl = "source/"+icon_theme+"_int3.png";
+            PointShindo = "震度3";
+        } else if (element["scale"] == 40) {
+            eval('PointColor = "RGB(220, 189, 58)"');
+            ImgUrl = "source/"+icon_theme+"_int4.png";
+            PointShindo = "震度4";
+        } else if (element["scale"] == 45) {
+            eval('PointColor = "RGB(220, 135, 0)"');
+            ImgUrl = "source/"+icon_theme+"_int50.png";
+            PointShindo = "震度5弱";
+        } else if (element["scale"] == 46) {
+            eval('PointColor = "RGB(220, 135, 0)"');
+            ImgUrl = "source/"+icon_theme+"_int_.png";
+            PointShindo = "震度5弱以上と推定";
+        } else if (element["scale"] == 50) {
+            eval('PointColor = "RGB(204, 77, 0)"');
+            ImgUrl = "source/"+icon_theme+"_int55.png";
+            PointShindo = "震度5強";
+        } else if (element["scale"] == 55) {
+            eval('PointColor = "RGB(195, 0, 0)"');
+            ImgUrl = "source/"+icon_theme+"_int60.png";
+            PointShindo = "震度6弱";
+        } else if (element["scale"] == 60) {
+            eval('PointColor = "RGB(125, 0, 0)"');
+            ImgUrl = "source/"+icon_theme+"_int65.png";
+            PointShindo = "震度6強";
+        } else if (element["scale"] == 70) {
+            eval('PointColor = "RGB(58, 0, 109)"');
+            ImgUrl = "source/"+icon_theme+"_int7.png";
+            PointShindo = "震度7";
+        } else {
+            eval('PointColor = "RGB(57, 59, 59)"');
+            ImgUrl = "source/"+icon_theme+"_int_.png";
+            PointShindo = "震度不明";
+        }
+            var area_Code = AreaNameToCode(element["addr"]);
+            latlon = FillPolygon(area_Code, PointColor);
+            latList.push(Number(latlon["lat"]));
+            lonList.push(Number(latlon["lng"]));
+            let shindoIcon = L.icon({
+                iconUrl: ImgUrl,
+                iconSize: [30, 30],
+                popupAnchor: [0, -50]
+            });
+            var shindo_icon = L.marker(latlon, { icon: shindoIcon,pane: eval('\"shindo'+element["scale"]+'\"') });
+            shindo_icon.bindPopup('<ruby>'+element["addr"] + '<rt style="font-size: 0.7em;">' + AreaNameToKana(element["addr"]) + '</rt></ruby>　'+ PointShindo,{closeButton: false, zIndexOffset: 10000,autoPan: false,});
+            shindo_icon.on('mouseover', function (e) {
+                this.openPopup();
+            });
+            shindo_icon.on('mouseout', function (e) {
+                this.closePopup();
+            });
+            shindo_layer.addLayer(shindo_icon);
+            // console.log(element["addr"] + " " + PointShindo + " OK");
+        });
+        const aryMax = function (a, b) {return Math.max(a, b);}
+        const aryMin = function (a, b) {return Math.min(a, b);}
+        var latMax = latList.reduce(aryMax);
+        var latMin = latList.reduce(aryMin);
+        var lonMax = lonList.reduce(aryMax);
+        var lonMin = lonList.reduce(aryMin);
+        //通常時の位置初期化の位置
+        shingenLatLng = new L.LatLng(Number((latMax+latMin)/2), Number((lonMax+lonMin)/2));
+        latList = [];
+        lonList = [];
+    }
+    map.addLayer(shindo_layer);
+    map.addLayer(shindo_filled_layer);
+   var shingenIcon = L.marker(shingenLatLng, {icon: shingenIconImage }).addTo(map);
+    map.flyTo(shingenLatLng, 7.5, { duration: 0.5 })
+
+});
+function formatJSTDate(dateStr) {
+    const date = new Date(dateStr);
+
+    // 月は 0 始まりなので +1
+    const month = date.getMonth() + 1;
+    const day   = date.getDate();
+    const hour  = date.getHours();
+    const min   = date.getMinutes().toString().padStart(2, "0");
+
+    return `${month}月${day}日 ${hour}時${min}分ごろ`;
+}
+
+}
+function AreaNameToCode(Name) {
+    var array_Num = AreaName.indexOf(Name);
+    return AreaCode[array_Num];
+}
+function AreaCodeToName(code) {
+    var array_Num = AreaCode.indexOf(code);
+    return AreaName[array_Num];
+}
+function AreaNameToKana(Name) {
+    var array_Num = AreaName.indexOf(Name);
+    return AreaKana[array_Num];
+}
+function FillPolygon(area_Code, PointColor) {
+    var array_Num = AreaCode.indexOf(area_Code);
+    if (array_Num != -1) {
+        var style;
+        style = {
+            "color": "#ffffff",
+            "weight": 1.2,
+            "opacity": 1,
+            "fillColor": PointColor,
+            "fillOpacity": 1,
+        }
+        data_japan = japan_data["features"][array_Num];
+        var Filled_Layer = L.geoJSON(data_japan, {
+            style: style,
+            pane: "pane_map_filled",
+            onEachFeature: function (feature, layer) {
+                if (feature.properties && feature.properties.popupContent) {
+                    layer.bindPopup(feature.properties.popupContent);
+                }
+                layer.myTag = "Filled"
+            },
+        });
+        shindo_filled_layer.addLayer(Filled_Layer);
+        map.addLayer(Filled_Layer);
+        var geodata = data_japan["geometry"]["coordinates"][0];
+        let latlon;
+        map.eachLayer(function (layer) {
+            if (layer.myTag && layer.myTag === "Filled") {
+                latlon = layer.getCenter();
+            }
+        });
+        map.removeLayer(Filled_Layer);
+        return latlon;
+    }
+}
+function hantei_maxIntText(param) {
+    let kaerichi = param == 10 ? "1" : param == 20 ? "2" : param == 30 ? "3" : param == 40 ? "4" :
+    param == 45 ? "5弱" : param == 46 ? "5弱" : param == 50 ? "5強" : param == 55 ? "6弱" :
+    param == 60 ? "6強" : param == 70 ? "7" : "不明";
+    return kaerichi;
+}
+function hantei_Magnitude(param) {
+    let kaerichi = param != -1 ? param.toFixed(1) : 'ー.ー';
+    return kaerichi;
+}
+function hantei_Name(param) {
+    let kaerichi = param != "" ? param : '情報なし';
+    return kaerichi;
+}
+function hantei_Depth(param) {
+    let kaerichi = param != -1 ? "約"+param+"km" : '不明';
+    return kaerichi;
+}
+function hantei_tsunamiText(param) {
+    let kaerichi = param == "None" ? "なし" :
+    param == "Unknown" ? "不明" :
+    param == "Checking" ? "調査中" :
+    param == "NonEffective" ? "若干の海面変動" :
+    param == "Watch" ? "津波注意報" :
+    param == "Warning" ? "津波警報" : "情報なし";
+    return kaerichi;
+}
 
 // 天気図読み込み
 async function loadWeatherMap() {
@@ -585,6 +1102,11 @@ async function updateAll() {
 }
 
 updateAll();
+async function earthquakeupdateAll() {
+  await fetchQuakeData();
+}
+earthquakeupdateAll();
+setInterval(earthquakeupdateAll, 10000);
 setInterval(updateAll, 5 * 60 * 1000);
 
 // 地震APIのポーリング: 30秒ごとに差分をチェックし、更新があればテロップを即時表示する
