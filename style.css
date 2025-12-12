@@ -1,0 +1,394 @@
+/* inlined styles.css */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  overflow-x: hidden;
+  font-family: 'BIZ UDP Gothic', sans-serif;
+}
+
+/* ページ全体の背景（地図領域とテロップを含む） */
+html, body {
+  background-color: #020418;
+}
+
+.ticker-wrapper {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 80px; /* テロップを大きく表示するため高さ拡張 */
+  background-color: #020418;
+  border-top: 1px solid #888888;
+  box-sizing: border-box;
+  position: relative;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  padding-right: 180px; /* 時計のための余白を確保 */
+ }
+
+ /* テロップ左側に垂直な目印の棒を表示 */
+ .ticker-wrapper::before {
+   content: '';
+   position: fixed;
+   right: 408px; /* 天気図の左隣 */
+   bottom: 80px;
+   width: 1px;
+   height: calc(100vh - 80px);
+   background: #888888;
+   z-index: 40;
+ }
+/* テロップ表示用の内部エリア（時計領域と重ならないように幅を制限） */
+.ticker-area {
+  position: absolute;
+  left: 20px; /* 左側に20pxの余白 */
+  right: 10px; /* 時計のすぐ左まで拡張 */
+  height: 100%;
+  overflow: hidden;
+}
+
+.ticker-area .ticker {
+  position: absolute;
+}
+
+.ticker {
+  position: absolute;
+  white-space: nowrap;
+  font-size: 40px; /* フォントを大きく */
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  line-height: 1;
+  will-change: transform;
+}
+
+.ticker img {
+  vertical-align: middle;
+  height: 44px; /* アイコンを大きく */
+  margin: 0 8px 0 8px;
+}
+
+.clock {
+  background-color: #020418;
+  font-size: 63px; /* 時計を大きく */
+  color: #fff;
+  position: absolute;
+  top: 46%;
+  transform: translateY(-50%); /* 垂直中央に配置してフォントサイズ変更で下に隙間が出ないようにする */
+  right: 14px;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+.temp {
+  margin-left: 12px;
+  font-weight: bold;
+  font-size: 40px; /* 最高/最低気温を大きく */
+  user-select: none;
+}
+
+.max-temp {
+  color: #ff4444; /* 赤 */
+}
+
+.min-temp {
+  color: #4466ff; /* 青 */
+}
+
+.region-name {
+  margin-left: 6px;
+}
+
+.slash {
+  margin: 0;
+  color: #fff;
+  user-select: none;
+  font-weight: normal;
+  font-size: 34px; /* 区切り文字も大きめに */
+}
+
+/* 天気図表示領域 */
+.container {
+  width: 100%;
+  height: calc(100vh - 80px); /* テロップの高さに合わせて調整 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+#loading {
+  color: #cccccc;
+  text-align: center;
+}
+
+#weatherMap {
+  /* 右下に固定表示。テロップ（下部）と被らないように配置 */
+  position: fixed;
+  /* 右端からの余白（十分なスペースを確保） */
+  right: 30px;
+  bottom: 96px; /* テロップの上に少し余白を確保（テロップ高さ80 + 16） */
+  width: min(40vw, 560px);
+  max-width: 360px;
+  max-height: calc(100vh - 160px);
+  object-fit: contain;
+  display: block;
+  z-index: 50;
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+}
+
+/* 右上に直接表示する警報ページ用フレーム */
+/* 埋め込み警報ウィジェット（警報表示を index 内に統合） */
+.warning-embedded {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  left: auto;
+  z-index: 110;
+  /* 幅はビューポートに応じて可変に。白線（right:408px）を越えないよう最大幅を制限 */
+  /* widget の right は 12px 固定なので、最大幅 = 408px - 12px = 396px */
+  width: min(40vw, 396px);
+  max-width: 396px;
+  /* 高さは JS で天気図の上端に合わせて調整する。フォールバックは 60vh */
+  max-height: 60vh;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.04);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+  overflow: auto;
+  padding: 12px;
+  box-sizing: border-box;
+}
+
+
+
+
+.warning-embedded #warning-card-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  color: #fff;
+  margin-top: 10px; /* タイトルより少し下にずらす */
+}
+
+/* タイトル（警報見出し） */
+.warning-embedded .warning-title {
+  text-align: center;
+  font-size: var(--warning-title-size, 18px); /* 可変に */
+  color: #e6e6e6;
+  margin-bottom: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.warning-embedded .card {
+  /* 強調された長方形（元の見た目に近いスタイル） */
+  background: #111;
+  border: 2px solid #fff;
+  border-radius: 10px;
+  padding: var(--card-padding, 14px); /* 可変パディング */
+  min-height: var(--card-min-height, 58px); /* 可変高さ */
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+}
+
+.warning-embedded .region { font-weight: bold; color: #fff; }
+
+.warning-embedded .warning {
+  padding: 2px 6px;
+  border-radius: 5px;
+  color: #000;
+  text-align: center;
+  white-space: nowrap;
+}
+.warning-embedded .警報 { background-color: red; }
+.warning-embedded .注意報 { background-color: yellow; }
+/* 廃止 */
+/* .warning-embedded .解除 { background-color: gray; } */
+
+/* スクロールバーを非表示（スクロール自体は可能） */
+.warning-embedded {
+  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none;    /* Firefox */
+}
+.warning-embedded::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+  width: 0;
+  height: 0;
+}
+
+/* iframe 内を埋めるため、内部の body は warning.html 側で管理してください */
+
+/* サイト全体のスクロールバーを非表示にする（スクロールは維持） */
+html, body {
+  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none;    /* Firefox */
+}
+html::-webkit-scrollbar, body::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+  width: 0;
+  height: 0;
+}
+#map {
+  position: fixed;
+  left: 0px;
+  right: 408px;
+  top: 0;
+  bottom: 80px;
+  z-index: 30;
+  background: #1d1d1d;
+}
+/* 左端パネル（地図の上に重ねる） */
+/* 上のタイトル長方形 */
+#map-left-panel-title {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  width: 400px;
+  height: 65px; /* タイトル枠の高さ */
+  background: rgba(0, 0, 0, 0.55); /* 下より濃く */
+  color: white;
+  font-size: 35px;
+  font-weight: bold;
+  text-align: center;
+  line-height: 60px; /* テキストを中央に */
+  z-index: 2000;
+  pointer-events: none;
+  border-radius: 4px;
+}
+
+/* 下の半透明パネル */
+#map-left-panel {
+  position: absolute;
+  top: 90px;   /* タイトル（60px）＋余白30px */
+  left: 15px;
+  width: 400px;
+  bottom: 95px;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 1999;
+  pointer-events: none;
+  border-radius: 4px;
+}
+#eq-info {
+  padding: 20px;
+  color: white;
+  font-family: "Segoe UI", sans-serif;
+  pointer-events: auto;
+}
+
+/* 最大震度の小さいアイコン */
+.eq-maxscale-icon {
+  width: 38px;
+  height: 38px;
+  vertical-align: middle;
+}
+
+
+
+/* 最大震度テキスト */
+.eq-maxscale {
+  text-align: center;
+  font-size: 38px;
+  font-weight: bold;
+  color: white; /* ← 白文字 */
+}
+
+/* 時刻 */
+.eq-time {
+    text-align: center;
+font-weight: bold;
+  font-size: 30px;
+}
+
+/* 震源地 */
+.eq-hypo {
+  font-weight: bold;
+  font-size: 30px;
+}
+
+/* 下の通常テキスト */
+.eq-item {
+  font-weight: bold;
+  font-size: 30px;
+}
+.eq-tsunami-warning {
+  font-weight: bold;
+  font-size: 30px;
+}
+.leaflet-fade-anim .leaflet-popup {
+    transition: 0s;
+}
+.leaflet-popup-content-wrapper {
+	background-color: rgba(255, 255, 255, 0.85);
+    box-shadow: 0px 3px 7px 2px rgba(0, 0, 0, 0.4);
+    border-radius: 0!important;
+    font-family: "ヒラギノ角ゴ-Pro",'Noto Sans JP';
+    font-weight: 500;
+    user-select: none;
+	margin-bottom: 0;
+}
+.leaflet-popup-content {
+    color: black !important;
+    font-size: 1.2rem;
+    margin: 10px 8px 8px 8px;
+}
+.leaflet-popup-tip-container {
+    display: none;
+}
+.btns {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    z-index: 10000;
+    user-select: none;
+}
+.setsumei, #quakelist, #reload, #map_ichi, #test, #btn_shindo_ichiran, #autoreload, #display_onoff_point_check, #view_info {
+    display: inline-block;
+    background: #00000088;
+    border: white 2.5px solid;
+    border-radius: 5px;
+    color: white;
+    padding: 5px;
+    font-family: "ヒラギノ角ゴ-Pro",'Noto Sans JP';
+    font-weight: 500;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+#quakelist {
+    width: 25em;
+    height: calc(2em + 5px);
+}
+.shindo-legend {
+  padding: 8px 12px;
+  background: rgba(0,0,0,0.55);
+  color: white;
+  font-size: 16px;
+  line-height: 1.4;
+  border-radius: 6px;
+  box-shadow: 0 0 6px rgba(0,0,0,0.4);
+}
+.shindo-legend .legend-title {
+  font-weight: bold;
+  margin-bottom: 4px;
+  text-align: center;
+  font-size: 17px;
+}
+.shindo-legend .legend-item {
+  display: flex;
+  align-items: center;
+  margin: 3px 0;
+}
+.shindo-legend img {
+  width: 22px;
+  height: 22px;
+  margin-right: 6px;
+}
