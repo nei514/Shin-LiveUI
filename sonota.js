@@ -2,6 +2,9 @@ const ticker = document.getElementById("ticker");
 const wrapper = document.querySelector(".ticker-wrapper");
 const tickerArea = document.querySelector('.ticker-area');
 const clock = document.getElementById("clock");
+const WEATHER_SOURCE_HTML = `
+  <span class="weather-source">出典：Weathernews</span>
+`;
 
 // 設定: JS側で枚数だけ指定したい場合はここを編集してください
 // WARNINGSIZE を 0 にすると画面解像度に合わせた自動算出を有効にします
@@ -135,8 +138,12 @@ function getCombinedWeatherHTML() {
 // ビルド専用: 合成アイテム配列を返す（ただちに適用しない）
 // 返り値の順序: 天気（必ず先頭）→ ニュース見出し（存在すれば続く）
 function buildCombinedItems() {
-return [ weatherHTMLs.join('　') ]; // ← ニュースなし、天気だけ
+  return [
+    weatherHTMLs.join('　'),
+    WEATHER_SOURCE_HTML
+  ];
 }
+
 
 // テロップ
 const speedWeather = 100;
@@ -156,10 +163,14 @@ function anim() {
 pos -= 3;
 ticker.style.left = pos + "px";
 if (pos + ticker.offsetWidth < 0) {
-currentIndex = 0;
-ticker.innerHTML = combinedItems[0];
-pos = area.offsetWidth;
+  currentIndex++;
+  if (currentIndex >= combinedItems.length) {
+    currentIndex = 0;
+  }
+  ticker.innerHTML = combinedItems[currentIndex];
+  pos = area.offsetWidth;
 }
+
 animationId = requestAnimationFrame(anim);
 }
 anim();
