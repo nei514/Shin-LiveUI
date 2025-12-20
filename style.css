@@ -27,7 +27,18 @@ html, body {
   align-items: center;
   padding-right: 180px; /* 時計のための余白を確保 */
  }
-
+.copyright{
+    position: fixed;
+    bottom: 0;
+    left: 25%;
+    background-color: #1d1d1d;
+    color: #ffffff;
+    z-index: 1;
+    margin: 0;
+}
+.copyright a{
+    color: #ffffff;
+}
  /* テロップ左側に垂直な目印の棒を表示 */
  .ticker-wrapper::before {
    content: '';
@@ -82,6 +93,7 @@ html, body {
   padding: 0;
   user-select: none;
 }
+
 
 .temp {
   margin-left: 12px;
@@ -210,7 +222,7 @@ html, body {
   text-align: center;
   white-space: nowrap;
 }
-.warning-embedded .警報 { background-color: red; }
+.warning-embedded .警報 { background-color: red; color : white; }
 .warning-embedded .注意報 { background-color: yellow; }
 /* 廃止 */
 /* .warning-embedded .解除 { background-color: gray; } */
@@ -265,7 +277,9 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
   pointer-events: none;
   border-radius: 4px;
 }
-
+.eq_title {
+  font-family: "Segoe UI", sans-serif;
+}
 /* 下の半透明パネル */
 #map-left-panel {
   position: absolute;
@@ -278,13 +292,35 @@ html::-webkit-scrollbar, body::-webkit-scrollbar {
   pointer-events: none;
   border-radius: 4px;
 }
+#map-left-panel-Serial {
+  position: absolute;
+  top: -75px;
+  left: 410px;
+  width: 150px;
+  height: 65px; /* タイトル枠の高さ */
+  background: rgba(0, 0, 0, 0.55); /* 下より濃く */
+  color: white;
+  font-size: 35px;
+  font-weight: bold;
+  text-align: center;
+  line-height: 60px; /* テキストを中央に */
+  z-index: 2000;
+  pointer-events: none;
+  border-radius: 4px;
+}
+.eq-serial{
+  font-family: "Segoe UI", sans-serif;
+}
 #eq-info {
   padding: 20px;
   color: white;
   font-family: "Segoe UI", sans-serif;
   pointer-events: auto;
 }
-
+.eq-serial{
+  font-size: 30px;
+  font-weight: bold;
+}
 /* 最大震度の小さいアイコン */
 .eq-maxscale-icon {
   width: 38px;
@@ -350,6 +386,7 @@ font-weight: bold;
     left: 10px;
     z-index: 10000;
     user-select: none;
+    display: none;
 }
 .setsumei, #quakelist, #reload, #map_ichi, #test, #btn_shindo_ichiran, #autoreload, #display_onoff_point_check, #view_info {
     display: inline-block;
@@ -362,10 +399,12 @@ font-weight: bold;
     font-weight: 500;
     font-size: 0.8rem;
     cursor: pointer;
+    display: none;
 }
 #quakelist {
     width: 25em;
     height: calc(2em + 5px);
+    display: none;
 }
 .shindo-legend {
   padding: 8px 12px;
